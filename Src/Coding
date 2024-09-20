@@ -1,0 +1,111 @@
+#include <Servo.h>
+#include <Wire.h>
+#include <MPU6050.h>
+
+// Define Ultrasonic Sensor Pins
+#define TRIG_PIN_1 2
+#define ECHO_PIN_1 3
+#define TRIG_PIN_2 4
+#define ECHO_PIN_2 5
+
+// Motor control pins
+#define ENA 9  // Enable pin for motor A
+#define IN1 8  // Input pin 1 for motor A
+#define IN2 7  // Input pin 2 for motor A
+#define SERVO_PIN 6  // Servo for steering control
+
+// ESP32 camera pin
+#define CAM_PIN 34  // Example GPIO, adjust to your ESP32 setup
+
+// Object instances
+Servo steeringServo;
+MPU6050 gyro;
+
+int distance1 = 0;
+int distance2 = 0;
+
+void setup() {
+  // Initialize Serial Monitor
+  Serial.begin(115200);
+  
+  // Setup Ultrasonic sensors
+  pinMode(TRIG_PIN_1, OUTPUT);
+  pinMode(ECHO_PIN_1, INPUT);
+  pinMode(TRIG_PIN_2, OUTPUT);
+  pinMode(ECHO_PIN_2, INPUT);
+
+  // Setup motor control pins
+  pinMode(ENA, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+
+  // Setup steering servo
+  steeringServo.attach(SERVO_PIN);
+
+  // Initialize MPU6050 (gyro)
+  Wire.begin();
+  gyro.initialize();
+
+  // Setup ESP32 Camera
+  // Initialize the ESP32 camera here (the setup will vary depending on the library)
+  // Example: Initialize with an I2C or Serial interface
+
+  // Set initial speed and steering positions
+  analogWrite(ENA, 255);  // Full speed ahead
+  steeringServo.write(90);  // Straight steering
+}
+
+void loop() {
+  // Get distance readings from ultrasonic sensors
+  distance1 = getDistance(TRIG_PIN_1, ECHO_PIN_1);
+  distance2 = getDistance(TRIG_PIN_2, ECHO_PIN_2);
+  
+  // Process ESP32 camera image (detect red or green obstacles)
+  int detectedColor = detectColor();  // Function to detect red or green using the ESP32
+
+  // Control logic based on color and distance
+  if (detectedColor == 1) { // Red detected
+    // Go to the right
+    moveRight();
+  } else if (detectedColor == 2) { // Green detected
+    // Go to the left
+    moveLeft();
+  }
+
+  // Additional obstacle detection using ultrasonic sensors
+  if (distance1 < 30 || distance2 < 30) {
+    // Obstacle detected, stop and decide based on detected color
+    analogWrite(ENA, 0);  // Stop the motors
+  }
+}
+
+int getDistance(int trigPin, int echoPin) {
+  long duration, distance;
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  duration = pulseIn(echoPin, HIGH);
+  distance = duration * 0.034 / 2;
+  return distance;
+}
+
+int detectColor() {
+  // Placeholder function to process the ESP32 camera feed and return
+  // 1 for Red, 2 for Green (implement this based on your camera setup and image processing)
+  return 0;  // Default: No color detected
+}
+
+void moveRight() {
+  // Steering to the right side of red blocks
+  steeringServo.write(120);  // Turn right
+  analogWrite(ENA, 255);  // Move forward
+}
+
+void moveLeft() {
+  // Steering to the left side of green blocks
+  steeringServo.write(60);  // Turn left
+  analogWrite(ENA, 255);  // Move forward
+}
